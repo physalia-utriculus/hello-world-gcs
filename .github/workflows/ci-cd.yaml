@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  APP_IMAGE_REFERENCE: ${{ vars.APP_IMAGE_REGISTRY_URI }}/${{ vars.APP_IMAGE_REPOSITORY_PATH }}/app:${{ github.sha }}
+  APP_IMAGE_REFERENCE: ${{ vars.APP_PARTIAL_IMAGE_REFERENCE }}/app:${{ github.sha }}
 
 jobs:
   build-and-test:
@@ -62,7 +62,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker
-        run: gcloud auth configure-docker ${{ vars.APP_IMAGE_REGISTRY_URI }} --quiet
+        run: gcloud auth configure-docker ${{ vars.APP_REGISTRY_HOSTNAME }} --quiet
 
       - name: Build and push Docker image
         working-directory: source
