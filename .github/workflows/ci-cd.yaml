@@ -18,10 +18,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -41,16 +41,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.GCP_CI_WORKLOAD_IDENTITY_PROVIDER_NAME }}
           service_account: ${{ vars.GCP_CI_SERVICE_ACCOUNT_EMAIL }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: Configure Docker
         run: gcloud auth configure-docker ${{ vars.APP_REGISTRY_HOSTNAME }} --quiet
@@ -62,7 +62,7 @@ jobs:
           docker push ${{ env.APP_IMAGE_REFERENCE }}
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.14"
 
@@ -76,5 +76,5 @@ jobs:
         working-directory: infra/support
         run: |
           terraform apply -auto-approve \
-            -var="terraform_state_bucket_name=${{ vars.TERRAFORM_GCS_STATE_BUCKET_NAME }}"
+            -var="terraform_state_bucket_name=${{ vars.TERRAFORM_GCS_STATE_BUCKET_NAME }}" \
             -var="app_image_reference=${{ env.APP_IMAGE_REFERENCE }}"
