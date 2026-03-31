@@ -2,12 +2,13 @@ name: CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 env:
   APP_IMAGE_REFERENCE: ${{ vars.APP_PARTIAL_IMAGE_REFERENCE }}/app:${{ github.sha }}
+  TF_INPUT: false # Disable interactive prompts in Terraform commands
 
 jobs:
   build-and-test:
@@ -76,5 +77,5 @@ jobs:
         working-directory: infra/support
         run: |
           terraform apply -auto-approve \
-            -var="terraform_state_bucket_name=${{ vars.TERRAFORM_GCS_STATE_BUCKET_NAME }}" \
+            -var="shared_terraform_gcs_state_bucket_name=${{ vars.TERRAFORM_GCS_STATE_BUCKET_NAME }}" \
             -var="app_image_reference=${{ env.APP_IMAGE_REFERENCE }}"

@@ -150,6 +150,7 @@ resource "google_storage_bucket_iam_member" "github_actions_sa_object_admin_memb
     expression  = "resource.name.startsWith('projects/_/buckets/${var.shared_terraform_gcs_state_bucket_name}/objects/apps/${local.app_base_name}/${local.app_variant}/')"
   }
 }
+
 # Grant GitHub Actions service account permissions to deploy Cloud Run
 resource "google_project_iam_member" "github_actions_sa_run_admin_member" {
   project = local.gcp_app_project_id
