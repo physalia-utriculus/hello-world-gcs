@@ -2,7 +2,7 @@
 
 locals {
   app_base_name = "hello-world"
-  app_variant   = "base"
+  app_variant   = "gcs"
 }
 
 terraform {
@@ -10,7 +10,7 @@ terraform {
 
   backend "gcs" {
     # bucket = <provided via command-line arguments>
-    prefix = "apps/hello-world/base/support"
+    prefix = "apps/hello-world/gcs/support"
   }
 
   required_providers {

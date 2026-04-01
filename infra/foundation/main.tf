@@ -3,7 +3,7 @@
 locals {
   gcp_organization_prefix = "ms"
   app_base_name           = "hello-world"
-  app_variant             = "base"
+  app_variant             = "gcs"
 }
 
 terraform {
@@ -11,7 +11,7 @@ terraform {
 
   backend "gcs" {
     # bucket = <provided via command-line arguments>
-    prefix = "apps/hello-world/base/foundation"
+    prefix = "apps/hello-world/gcs/foundation"
   }
 
   required_providers {
