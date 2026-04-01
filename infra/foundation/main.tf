@@ -101,7 +101,7 @@ provider "google" {
 resource "google_project_service" "apis" {
   for_each = toset([
     "run.googleapis.com",
-    "firestore.googleapis.com",
+    "storage.googleapis.com",
     "artifactregistry.googleapis.com",
     "cloudbuild.googleapis.com",
     "iam.googleapis.com",
@@ -205,11 +205,11 @@ resource "google_service_account" "app_service_account" {
   display_name = "Hello World App Service Account"
 }
 
-# Grant app service account Firestore access
-resource "google_project_iam_member" "app_sa_datastore_user_member" {
+# Grant GitHub Actions service account permissions to manage Cloud Storage
+resource "google_project_iam_member" "github_actions_sa_storage_admin_member" {
   project = local.gcp_app_project_id
-  role    = "roles/datastore.user"
-  member  = "serviceAccount:${google_service_account.app_service_account.email}"
+  role    = "roles/storage.admin"
+  member  = "serviceAccount:${google_service_account.github_actions_service_account.email}"
 }
 
 # Grant GitHub Actions service account permissions to act as the app service account

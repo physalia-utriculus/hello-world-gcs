@@ -57,11 +57,20 @@ provider "google" {
   region  = local.gcp_primary_location
 }
 
-# Firestore database
-resource "google_firestore_database" "main_firestore_database" {
-  name        = "(default)"
-  location_id = local.gcp_primary_location
-  type        = "FIRESTORE_NATIVE"
+# Cloud Storage bucket for app data
+resource "google_storage_bucket" "app_bucket" {
+  name          = "${local.gcp_app_project_id}-app-data"
+  location      = local.gcp_primary_location
+  force_destroy = true
+
+  uniform_bucket_level_access = true
+}
+
+# Grant app service account read/write access to the app bucket
+resource "google_storage_bucket_iam_member" "app_sa_bucket_object_admin" {
+  bucket = google_storage_bucket.app_bucket.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${local.gcp_app_service_account_email}"
 }
 
 # Cloud Run service
@@ -77,6 +86,11 @@ resource "google_cloud_run_v2_service" "app_service" {
 
       ports {
         container_port = 8080
+      }
+
+      env {
+        name  = "GCS_BUCKET_NAME"
+        value = google_storage_bucket.app_bucket.name
       }
 
       resources {

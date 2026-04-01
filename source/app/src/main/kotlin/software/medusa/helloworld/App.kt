@@ -1,6 +1,9 @@
 package software.medusa.helloworld
 
-import com.google.cloud.firestore.FirestoreOptions
+import com.google.cloud.storage.BlobId
+import com.google.cloud.storage.BlobInfo
+import com.google.cloud.storage.StorageException
+import com.google.cloud.storage.StorageOptions
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -27,7 +30,10 @@ fun Application.module() {
         json()
     }
 
-    val firestore = FirestoreOptions.getDefaultInstance().service
+    val storage = StorageOptions.getDefaultInstance().service
+    val bucketName = System.getenv("GCS_BUCKET_NAME")
+        ?: error("GCS_BUCKET_NAME environment variable is not set")
+    val counterBlobId = BlobId.of(bucketName, "counter/main")
 
     routing {
         get("/") {
@@ -35,24 +41,56 @@ fun Application.module() {
         }
 
         post("/counter/increment") {
-            val counterRef = firestore.collection("counters").document("main")
-
-            val newCount = firestore.runTransaction { transaction ->
-                val snapshot = transaction.get(counterRef).get()
-                val currentCount = snapshot.getLong("value") ?: 0L
-                val updatedCount = currentCount + 1
-                transaction.set(counterRef, mapOf("value" to updatedCount))
-                updatedCount
-            }.get()
-
+            val newCount = incrementCounter(storage, counterBlobId)
             call.respond(CounterResponse(count = newCount))
         }
 
         get("/counter") {
-            val counterRef = firestore.collection("counters").document("main")
-            val snapshot = counterRef.get().get()
-            val count = snapshot.getLong("value") ?: 0L
+            val blob = storage.get(counterBlobId)
+            val count = blob?.getContent()?.toString(Charsets.UTF_8)?.toLongOrNull() ?: 0L
             call.respond(CounterResponse(count = count))
+        }
+    }
+}
+
+/**
+ * Atomically increments the counter stored in GCS using optimistic concurrency via
+ * generation-match preconditions. Retries on conflict until the write succeeds.
+ */
+private fun incrementCounter(
+    storage: com.google.cloud.storage.Storage,
+    blobId: BlobId,
+): Long {
+    while (true) {
+        val existing = storage.get(blobId)
+        val currentCount = existing?.getContent()?.toString(Charsets.UTF_8)?.toLongOrNull() ?: 0L
+        val newCount = currentCount + 1
+        val newContent = newCount.toString().toByteArray(Charsets.UTF_8)
+
+        try {
+            if (existing == null) {
+                // Object does not exist yet — create it, but only if generation is still 0
+                val blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/plain").build()
+                storage.create(
+                    blobInfo,
+                    newContent,
+                    com.google.cloud.storage.Storage.BlobTargetOption.doesNotExist(),
+                )
+            } else {
+                // Object exists — overwrite only if generation has not changed
+                existing.writer(
+                    com.google.cloud.storage.Storage.BlobWriteOption.generationMatch()
+                ).use { writer ->
+                    writer.write(java.nio.ByteBuffer.wrap(newContent))
+                }
+            }
+            return newCount
+        } catch (e: StorageException) {
+            if (e.code == 412 || e.code == 409) {
+                // Precondition failed (412) or conflict (409) — another writer raced us; retry
+                continue
+            }
+            throw e
         }
     }
 }
