@@ -106,6 +106,8 @@ resource "google_project_service" "apis" {
     "cloudbuild.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
+    "cloudresourcemanager.googleapis.com",
+    "orgpolicy.googleapis.com",
   ])
 
   project            = local.gcp_app_project_id
@@ -158,11 +160,40 @@ resource "google_project_iam_member" "github_actions_sa_run_admin_member" {
   member  = "serviceAccount:${google_service_account.github_actions_service_account.email}"
 }
 
+# Grant GitHub Actions service account permissions to provision Firestore databases
+resource "google_project_iam_member" "github_actions_sa_datastore_admin_member" {
+  project = local.gcp_app_project_id
+  role    = "roles/datastore.owner"
+  member  = "serviceAccount:${google_service_account.github_actions_service_account.email}"
+}
+
 # Grant GitHub Actions service account permissions to push to Artifact Registry
 resource "google_project_iam_member" "github_actions_sa_ar_writer_member" {
   project = local.gcp_app_project_id
   role    = "roles/artifactregistry.writer"
   member  = "serviceAccount:${google_service_account.github_actions_service_account.email}"
+}
+
+# Grant GitHub Actions service account permissions to manage IAM policies (e.g. allow allUsers on Cloud Run)
+resource "google_project_iam_member" "github_actions_sa_security_admin_member" {
+  project = local.gcp_app_project_id
+  role    = "roles/iam.securityAdmin"
+  member  = "serviceAccount:${google_service_account.github_actions_service_account.email}"
+}
+
+# Override org policy to allow allUsers/allAuthenticatedUsers IAM members in this project (needed for public Cloud Run)
+resource "google_project_organization_policy" "allow_all_iam_members" {
+  project    = local.gcp_app_project_id
+  constraint = "iam.allowedPolicyMemberDomains"
+
+  restore_policy {
+    default = true
+  }
+
+  depends_on = [
+    google_project_service.apis["cloudresourcemanager.googleapis.com"],
+    google_project_service.apis["orgpolicy.googleapis.com"],
+  ]
 }
 
 # %%% Cloud Run app service account %%%
